@@ -85,12 +85,36 @@ public class Tiling {
     return tile;
   }
 
+  public int[] tile(long[] pt) {
+//    assert pt.length == rank;
+    int useRank = Math.min(rank, pt.length); // eg varlen (datatype 9) has mismatch
+    int[] tile = new int[useRank];
+    for (int i = 0; i < useRank; i++) {
+      // 7/30/2016 jcaron. Apparently in some cases, at the end of the array, the index can be greater than the shape.
+      // eg cdmUnitTest/formats/netcdf4/UpperDeschutes_t4p10_swemelt.nc
+      // Presumably to have even chunks. Could try to calculate the last even chunk.
+      // For now im removing this consistency check.
+      //  assert shape[i] >= pt[i] : String.format("shape[%s]=(%s) should not be less than pt[%s]=(%s)", i, shape[i], i, pt[i]);
+      tile[i] = (int) (pt[i] / chunk[i]);        // seems wrong, rounding down ??
+    }
+    return tile;
+  }
+
   /**
    * Get order based on which tile the pt belongs to
    * @param pt index point
    * @return order number based on which tile the pt belongs to
    */
   public int order(int[] pt) {
+    int[] tile = tile(pt);
+    int order = 0;
+    int useRank = Math.min(rank, pt.length); // eg varlen (datatype 9) has mismatch
+    for (int i = 0; i < useRank; i++)
+      order += stride[i] * tile[i];
+    return order;
+  }
+
+  public int order(long[] pt) {
     int[] tile = tile(pt);
     int order = 0;
     int useRank = Math.min(rank, pt.length); // eg varlen (datatype 9) has mismatch
@@ -106,6 +130,10 @@ public class Tiling {
    * @return order(p1) - order(p2) : negative if p1 < p2, positive if p1 > p2 , 0 if equal
    */
   public int compare(int[] p1, int[] p2) {
+    return order(p1) - order(p2);
+  }
+
+  public int compare(long[] p1, long[] p2) {
     return order(p1) - order(p2);
   }
 }

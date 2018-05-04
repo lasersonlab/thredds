@@ -33,8 +33,8 @@ public class Section {
       return new Section(shape);
 
     String errs = s.checkInRange(shape);
-    if (errs != null)
-      throw new InvalidRangeException(errs);
+//    if (errs != null)
+//      throw new InvalidRangeException(errs);
 
     // if s is already filled, use it
     boolean ok = true;
@@ -91,6 +91,19 @@ public class Section {
     for (int i = 0; i < shape.length; i++) {
       if (shape[i] > 0)
         list.add(new Range(origin[i], origin[i] + shape[i] - 1));
+      else if (shape[i] == 0)
+        list.add(Range.EMPTY);
+      else {
+        list.add(Range.VLEN);
+      }
+    }
+  }
+
+  public Section(long[] originLong, int[] shape) throws InvalidRangeException {
+    list = new ArrayList<>();
+    for (int i = 0; i < shape.length; i++) {
+      if (shape[i] > 0)
+        list.add(new Range(originLong[i], originLong[i] + shape[i] - 1));
       else if (shape[i] == 0)
         list.add(Range.EMPTY);
       else {
@@ -345,6 +358,23 @@ public class Section {
       Range base = list.get(j);
       Range r = intersect.getRange(j);
       int offset = base.index(r.first());
+      result += offset * stride;
+      stride *= base.length();
+    }
+
+    return result;
+  }
+
+  public long offsetLong(Section intersect) throws InvalidRangeException {
+    if (!compatibleRank(intersect))
+      throw new InvalidRangeException("Incompatible Section rank");
+
+    long result = 0;
+    int stride = 1;
+    for (int j = list.size() - 1; j >= 0; j--) {
+      Range base = list.get(j);
+      Range r = intersect.getRange(j);
+      long offset = base.indexLong(r.firstLong());
       result += offset * stride;
       stride *= base.length();
     }
@@ -780,6 +810,14 @@ public class Section {
     int[] result = new int[list.size()];
     for (int i = 0; i < list.size(); i++) {
       result[i] = list.get(i).first();
+    }
+    return result;
+  }
+
+  public long[] getOriginLong() {
+    long[] result = new long[list.size()];
+    for (int i = 0; i < list.size(); i++) {
+      result[i] = list.get(i).firstLong();
     }
     return result;
   }

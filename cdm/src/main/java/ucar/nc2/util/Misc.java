@@ -166,6 +166,13 @@ public class Misc {
     for (int i : inta) f.format("%d, ", i);
   }
 
+  static public String showLongs(long[] longa) {
+    if (longa == null) return "null";
+    Formatter f = new Formatter();
+    for (long i : longa) f.format("%d,", i);
+    return f.toString();
+  }
+
   static public String showBytes(byte[] buff) {
     StringBuilder sbuff = new StringBuilder();
     for (int i = 0; i < buff.length; i++) {

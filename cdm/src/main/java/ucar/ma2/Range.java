@@ -52,6 +52,10 @@ public class Range implements RangeIterator {
   private final int stride; // stride, must be >= 1
   protected final String name; // optional name
 
+  private final boolean useLong;
+  private final long firstLong; // first value in range
+  private final long lastLong; // last value in range, inclusive
+
   /**
    * Used for EMPTY
    */
@@ -61,6 +65,10 @@ public class Range implements RangeIterator {
     this.last = 0;
     this.stride = 1;
     this.name = null;
+
+    this.useLong = false;
+    this.firstLong = first;
+    this.lastLong = last;
   }
 
   /**
@@ -71,6 +79,10 @@ public class Range implements RangeIterator {
    * @throws InvalidRangeException elements must be nonnegative, 0 <= first <= last
    */
   public Range(int first, int last) throws InvalidRangeException {
+    this(null, first, last, 1);
+  }
+
+  public Range(long first, long last) throws InvalidRangeException {
     this(null, first, last, 1);
   }
 
@@ -86,6 +98,10 @@ public class Range implements RangeIterator {
     this.last = length - 1;
     this.stride = 1;
     this.length = length;
+
+    this.useLong = false;
+    this.firstLong = first;
+    this.lastLong = last;
   }
 
   /**
@@ -137,6 +153,41 @@ public class Range implements RangeIterator {
     if (stride == 1)
       assert this.last == last;
     assert this.length != 0;
+
+    this.useLong = false;
+    this.firstLong = first;
+    this.lastLong = last;
+  }
+
+  /**
+   * Create a named range with a specified name and long values.
+   *
+   * @param name   name of Range
+   * @param first  first value in range
+   * @param last   last value in range, inclusive
+   * @param stride stride between consecutive elements, must be > 0
+   * @throws InvalidRangeException elements must be nonnegative: 0 <= first <= last, stride > 0
+   */
+  public Range(String name, long first, long last, int stride) throws InvalidRangeException {
+    if (first < 0)
+      throw new InvalidRangeException("first (" + first + ") must be >= 0");
+    if (last < first)
+      throw new InvalidRangeException("last (" + last + ") must be >= first (" + first + ")");
+    if (stride < 1)
+      throw new InvalidRangeException("stride (" + stride + ") must be > 0");
+
+    this.name = name;
+    this.first = (int) first;
+    this.stride = stride;
+    this.length = 1 + ((int) (last - first)) / stride;
+    this.last = this.first + (this.length - 1) * stride;
+    if (stride == 1)
+      assert this.last == last;
+    assert this.length != 0;
+
+    this.useLong = true;
+    this.firstLong = first;
+    this.lastLong = last;
   }
 
   protected Range(String name, int first, int last, int stride, int length) throws InvalidRangeException {
@@ -154,6 +205,10 @@ public class Range implements RangeIterator {
     this.last = last;
     this.stride = stride;
     this.length = length;
+
+    this.useLong = false;
+    this.firstLong = first;
+    this.lastLong = last;
   }
 
   // copy on change
@@ -205,6 +260,14 @@ public class Range implements RangeIterator {
    */
   public int stride() {
     return stride;
+  }
+
+  public long firstLong() {
+    return firstLong;
+  }
+
+  public long lastLong() {
+    return lastLong;
   }
 
   /////////////////////////////////////////////
@@ -301,6 +364,15 @@ public class Range implements RangeIterator {
     return result;
   }
 
+  public long indexLong(long want) throws InvalidRangeException {
+    if (want < firstLong)
+      throw new InvalidRangeException("elem must be >= first");
+    long result = (want - firstLong) / stride;
+    if (result > length)
+      throw new InvalidRangeException("elem must be <= first = n * stride");
+    return result;
+  }
+
   /**
    * Create a new Range by intersecting with a Range using same interval as this Range.
    * NOTE: we dont yet support intersection when both Ranges have strides
@@ -310,6 +382,9 @@ public class Range implements RangeIterator {
    * @throws InvalidRangeException elements must be nonnegative
    */
   public Range intersect(Range r) throws InvalidRangeException {
+    if (useLong) {
+      return intersectLong(r);
+    }
     if ((length() == 0) || (r.length() == 0))
       return EMPTY;
     if (this == VLEN || r == VLEN)
@@ -351,6 +426,48 @@ public class Range implements RangeIterator {
     return new Range(name, useFirst, last, resultStride);
   }
 
+  Range intersectLong(Range r) throws InvalidRangeException {
+    if ((length() == 0) || (r.length() == 0))
+      return EMPTY;
+    if (this == VLEN || r == VLEN)
+      return VLEN;
+
+    long last = Math.min(this.lastLong(), r.lastLong());
+    int resultStride = stride * r.stride();
+
+    long useFirst;
+    if (resultStride == 1) {  // both strides are 1
+      useFirst = Math.max(this.firstLong(), r.firstLong());
+
+    } else if (stride == 1) { // then r has a stride
+
+      if (r.firstLong() >= firstLong())
+        useFirst = r.firstLong();
+      else {
+        long incr = (firstLong() - r.firstLong()) / resultStride;
+        useFirst = r.firstLong() + incr * resultStride;
+        if (useFirst < firstLong()) useFirst += resultStride;
+      }
+
+    } else if (r.stride == 1) { // then this has a stride
+
+      if (firstLong() >= r.firstLong())
+        useFirst = firstLong();
+      else {
+        long incr = (r.firstLong() - firstLong()) / resultStride;
+        useFirst = firstLong() + incr * resultStride;
+        if (useFirst < r.firstLong()) useFirst += resultStride;
+      }
+
+    } else {
+      throw new UnsupportedOperationException("Intersection when both ranges have a stride");
+    }
+
+    if (useFirst > last)
+      return EMPTY;
+    return new Range(name, useFirst, last, resultStride);
+  }
+
   /**
    * Determine if a given Range intersects this one.
    * NOTE: we dont yet support intersection when both Ranges have strides
@@ -360,6 +477,9 @@ public class Range implements RangeIterator {
    * @throws UnsupportedOperationException if both Ranges have strides
    */
   public boolean intersects(Range r) {
+    if (useLong) {
+      return intersectsLong(r);
+    }
     if ((length() == 0) || (r.length() == 0))
       return false;
     if (this == VLEN || r == VLEN)
@@ -390,6 +510,46 @@ public class Range implements RangeIterator {
         int incr = (r.first() - first()) / resultStride;
         useFirst = first() + incr * resultStride;
         if (useFirst < r.first()) useFirst += resultStride;
+      }
+
+    } else {
+      throw new UnsupportedOperationException("Intersection when both ranges have a stride");
+    }
+
+    return (useFirst <= last);
+  }
+
+  boolean intersectsLong(Range r) {
+    if ((length() == 0) || (r.length() == 0))
+      return false;
+    if (this == VLEN || r == VLEN)
+      return true;
+
+    long last = Math.min(this.lastLong(), r.lastLong());
+    int resultStride = stride * r.stride();
+
+    long useFirst;
+    if (resultStride == 1) {   // both strides are 1
+      useFirst = Math.max(this.firstLong(), r.firstLong());
+
+    } else if (stride == 1) { // then r has a stride
+
+      if (r.firstLong() >= firstLong())
+        useFirst = r.firstLong();
+      else {
+        long incr = (firstLong() - r.firstLong()) / resultStride;
+        useFirst = r.firstLong() + incr * resultStride;
+        if (useFirst < firstLong()) useFirst += resultStride;
+      }
+
+    } else if (r.stride() == 1) { // then this has a stride
+
+      if (firstLong() >= r.firstLong())
+        useFirst = firstLong();
+      else {
+        long incr = (r.firstLong() - firstLong()) / resultStride;
+        useFirst = firstLong() + incr * resultStride;
+        if (useFirst < r.firstLong()) useFirst += resultStride;
       }
 
     } else {

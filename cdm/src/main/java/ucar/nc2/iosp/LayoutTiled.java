@@ -145,10 +145,17 @@ public class LayoutTiled implements Layout {
 
   static public class DataChunk {
     public int[] offset; // offset index of this chunk, relative to entire array
+    public long[] offsetLong; // offset index of this chunk, relative to entire array
     public long filePos; // filePos of a single raw data chunk
 
     public DataChunk(int[] offset, long filePos) {
       this.offset = offset;
+      this.filePos = filePos;
+    }
+
+    public DataChunk(int[] offset, long[] offsetLong, long filePos) {
+      this.offset = offset;
+      this.offsetLong = offsetLong;
       this.filePos = filePos;
     }
   }

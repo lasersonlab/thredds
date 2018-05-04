@@ -413,6 +413,10 @@ public class H4iosp extends AbstractIOServiceProvider {
       return offset;
     }
 
+    public long[] getOffsetLong() {
+      throw new UnsupportedOperationException("Can't use long addressing");
+    }
+
     public ByteBuffer getByteBuffer() throws IOException {
       if (bb == null) {
         // read compressed data in

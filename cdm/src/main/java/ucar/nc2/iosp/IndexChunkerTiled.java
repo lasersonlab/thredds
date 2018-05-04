@@ -36,8 +36,8 @@ public class IndexChunkerTiled {
   private IndexChunker.Chunk chunk; // gets returned on next().
   private int nelems; // number of elements to read at one time
   private long total, done;
-  private int startDestElem; // the offset in the result Array of this piece of it
-  private int startSrcElem; // the offset in the source Array of this piece of it
+  private long startDestElem; // the offset in the result Array of this piece of it
+  private long startSrcElem; // the offset in the source Array of this piece of it
 
   private static final boolean debug = false, debugMerge = false, debugDetail = false, debugNext = false, debugStartingElems = false;
 
@@ -86,8 +86,8 @@ public class IndexChunkerTiled {
      this.startPos = startFilePos + fileOffset; */
 
     // the offset in the result Array of this piece of it
-    startDestElem = wantSection.offset( intersect);
-    startSrcElem = dataSection.offset( intersect);
+    startDestElem = wantSection.offsetLong( intersect);
+    startSrcElem = dataSection.offsetLong( intersect);
     if (debugStartingElems)
       System.out.println(" startDestElem="+ startDestElem + " startSrcElem="+ startSrcElem);
 

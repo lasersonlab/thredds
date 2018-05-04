@@ -2912,6 +2912,7 @@ public class H5header extends NCheader
     // 1	A simple dataspace, i.e. a dataspace with a a rank > 0 and an appropriate # of dimensions.
     // 2	A null dataspace, i.e. a dataspace with no elements.
     int[] dimLength, maxLength; // , permute;
+    long[] dimLengthLong, maxLengthLong; // , permute;
     // boolean isPermuted;
 
     public String getName() {
@@ -2970,21 +2971,36 @@ public class H5header extends NCheader
       }  */
 
       dimLength = new int[ndims];
-      for (int i = 0; i < ndims; i++)
-        dimLength[i] = (int) readLength();
+      dimLengthLong = new long[ndims];
+      for (int i = 0; i < ndims; i++) {
+        long readLength = readLength();
+        dimLength[i] = (int) readLength;
+        if (dimLength[i] < 0) {
+          dimLength[i] = -1; // vlen hack
+        }
+        dimLengthLong[i] = readLength;
+      }
 
       boolean hasMax = (flags & 0x01) != 0;
       maxLength = new int[ndims];
+      maxLengthLong = new long[ndims];
       if (hasMax) {
-        for (int i = 0; i < ndims; i++)
-          maxLength[i] = (int) readLength();
+        for (int i = 0; i < ndims; i++) {
+          long readLength = readLength();
+          maxLength[i] = (int) readLength;
+          maxLengthLong[i] = (int) readLength;
+        }
       } else {
         System.arraycopy(dimLength, 0, maxLength, 0, ndims);
+        System.arraycopy(dimLengthLong, 0, maxLengthLong, 0, ndims);
       }
 
       if (debug1) {
         for (int i = 0; i < ndims; i++) {
           log.debug("    dim length = " + dimLength[i] + " max = " + maxLength[i]);
+        }
+        for (int i = 0; i < ndims; i++) {
+          log.debug("    dim length long = " + dimLengthLong[i] + " max = " + maxLengthLong[i]);
         }
       }
     }

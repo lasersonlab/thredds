@@ -86,7 +86,7 @@ public class LayoutBBTiled implements LayoutBB {
           }
 
           // make the dataSection for this chunk
-          dataSection = new Section(dataChunk.getOffset(), chunkSize);
+          dataSection = new Section(dataChunk.getOffsetLong(), chunkSize);
           if (debugIntersection)
             System.out.println(" test intersecting: " + dataSection + " want: " + want);
           if (dataSection.intersects(want)) // does it intersect ?
@@ -144,6 +144,7 @@ public class LayoutBBTiled implements LayoutBB {
    */
   static public interface DataChunk {
     public int[] getOffset();
+    public long[] getOffsetLong();
     public ByteBuffer getByteBuffer() throws IOException;
   }
 

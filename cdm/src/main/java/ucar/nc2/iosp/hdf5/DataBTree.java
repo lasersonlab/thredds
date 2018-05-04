@@ -101,7 +101,7 @@ public class DataBTree {
     DataChunkIteratorNoFilter(Section want, int nChunkDim) throws IOException {
       this.nChunkDim = nChunkDim;
       root = new Node(rootNodeAddress, -1); // should we cache the nodes ???
-      int[] wantOrigin = (want != null) ? want.getOrigin() : null;
+      long[] wantOrigin = (want != null) ? want.getOriginLong() : null;
       root.first(wantOrigin);
     }
 
@@ -112,13 +112,16 @@ public class DataBTree {
     public LayoutTiled.DataChunk next() throws IOException {
       DataChunk dc = root.next();
       int[] offset = dc.offset;
+      long[] offsetLong = dc.offsetLong;
       if (offset.length > nChunkDim) { // may have to eliminate last offset
         offset = new int[nChunkDim];
         System.arraycopy(dc.offset, 0, offset, 0, nChunkDim);
+        offsetLong = new long[nChunkDim];
+        System.arraycopy(dc.offsetLong, 0, offsetLong, 0, nChunkDim);
       }
       if (debugChunkOrder) System.out.printf("LayoutTiled.DataChunk next order %d%n", tiling.order(dc.offset));
 
-      return new LayoutTiled.DataChunk(offset, dc.filePos);
+      return new LayoutTiled.DataChunk(offset, offsetLong, dc.filePos);
     }
   }
 
@@ -127,7 +130,7 @@ public class DataBTree {
   // used by H5tiledLayoutBB, when there are filters
   class DataChunkIterator {
     private Node root;
-    private int[] wantOrigin;
+    private long[] wantOrigin;
 
     /**
      * Constructor
@@ -137,7 +140,7 @@ public class DataBTree {
      */
     DataChunkIterator(Section want) throws IOException {
       root = new Node(rootNodeAddress, -1); // should we cache the nodes ???
-      wantOrigin = (want != null) ? want.getOrigin() : null;
+      wantOrigin = (want != null) ? want.getOriginLong() : null;
       root.first(wantOrigin);
     }
 
@@ -160,6 +163,7 @@ public class DataBTree {
     private List<DataChunk> myEntries;
     // level > 0 only
     private int[][] offset; // int[nentries][ndim]; // other levels
+    private long[][] offsetLong;
 
     // "For raw data chunk nodes, the child pointer is the address of a single raw data chunk"
     private long[] childPointer; // long[nentries];
@@ -203,18 +207,20 @@ public class DataBTree {
         }
       } else { // just track the offsets and node addresses
         offset = new int[nentries + 1][ndimStorage];
+        offsetLong = new long[nentries + 1][ndimStorage];
         childPointer = new long[nentries + 1];
         for (int i = 0; i <= nentries; i++) {
           h5.raf.skipBytes(8); // skip size, filterMask
           for (int j = 0; j < ndimStorage; j++) {
             long loffset = h5.raf.readLong();
-            assert loffset < Integer.MAX_VALUE;
+            //assert loffset < Integer.MAX_VALUE;
             offset[i][j] = (int) loffset;
+            offsetLong[i][j] = loffset;
           }
           this.childPointer[i] = (i == nentries) ? -1 : h5.readOffset();
           if (debugDataBtree) {
             debugOut.print("    childPointer=" + childPointer[i] + " =0x" + Long.toHexString(childPointer[i]));
-            for (long anOffset : offset[i]) debugOut.print(" " + anOffset);
+            for (long anOffset : offsetLong[i]) debugOut.print(" " + anOffset);
             debugOut.println();
           }
         }
@@ -264,6 +270,45 @@ public class DataBTree {
       assert (nentries == 0) || (currentEntry < nentries) : currentEntry + " >= " + nentries;
     }
 
+    void first(long[] wantOrigin) throws IOException {
+      if (debugChunkOrder && wantOrigin != null) System.out.printf("Level %d: Tile want %d%n", level, tiling.order(wantOrigin));
+      if (level == 0) {
+        currentEntry = 0;
+        // note nentries-1 - assume dont skip the last one
+        for (currentEntry = 0; currentEntry < nentries-1; currentEntry++) {
+          DataChunk entry = myEntries.get(currentEntry + 1); // look at the next one
+          if (debugChunkOrder) System.out.printf(" Entry=%d: Tile ending order= %d%n", currentEntry, tiling.order(entry.offsetLong));
+          if ((wantOrigin == null) || tiling.compare(wantOrigin, entry.offsetLong) < 0) break;
+        }
+        if (debugChunkOrder) System.out.printf("Level %d use entry= %d%n", level, currentEntry);
+
+      } else {
+        currentNode = null;
+        for (currentEntry = 0; currentEntry < nentries; currentEntry++) {
+          if (debugChunkOrder) System.out.printf(" Entry=%3d offset [%-15s]: Tile order %d-%d%n", currentEntry,
+                  Misc.showLongs(offsetLong[currentEntry]),
+                  tiling.order(offsetLong[currentEntry]), tiling.order(offsetLong[currentEntry + 1]));
+          if ((wantOrigin == null) || tiling.compare(wantOrigin, offsetLong[currentEntry + 1]) < 0) {
+            currentNode = new Node(childPointer[currentEntry], this.address);
+            if (debugChunkOrder) System.out.printf("Level %d use entry= %d%n", level, currentEntry);
+            currentNode.first(wantOrigin);
+            break;
+          }
+        }
+
+        // heres the case where its the last entry we want; the tiling.compare() above may fail
+        if (currentNode == null) {
+          currentEntry = nentries - 1;
+          currentNode = new Node(childPointer[currentEntry], this.address);
+          currentNode.first(wantOrigin);
+        }
+      }
+
+      //if (currentEntry >= nentries)
+      //  System.out.println("hah");
+      assert (nentries == 0) || (currentEntry < nentries) : currentEntry + " >= " + nentries;
+    }
+
     // LOOK - wouldnt be a bad idea to terminate if possible instead of running through all subsequent entries
     boolean hasNext() {
       if (level == 0) {
@@ -285,7 +330,7 @@ public class DataBTree {
 
         currentEntry++;
         currentNode = new Node(childPointer[currentEntry], this.address);
-        currentNode.first(null);
+        currentNode.first((long[]) null);
         return currentNode.next();
       }
     }
@@ -317,16 +362,19 @@ public class DataBTree {
     int size;       // size of chunk in bytes; need storage layout dimensions to interpret
     int filterMask; // bitfield indicating which filters have been skipped for this chunk
     int[] offset;   // offset index of this chunk, reletive to entire array
+    long[] offsetLong;   // offset index of this chunk, reletive to entire array
     long filePos;   // filePos of a single raw data chunk, already shifted by the offset if needed
 
     DataChunk(int ndim, boolean last) throws IOException {
       this.size = h5.raf.readInt();
       this.filterMask = h5.raf.readInt();
       offset = new int[ndim];
+      offsetLong = new long[ndim];
       for (int i = 0; i < ndim; i++) {
         long loffset = h5.raf.readLong();
-        assert loffset < Integer.MAX_VALUE;
+        //assert loffset < Integer.MAX_VALUE;
         offset[i] = (int) loffset;
+        offsetLong[i] = loffset;
       }
       this.filePos = last ? -1 : h5.readAddress(); //
       if (memTracker != null) memTracker.addByLen("Chunked Data (" + owner + ")", filePos, size);
@@ -335,7 +383,7 @@ public class DataBTree {
     public String toString() {
       StringBuilder sbuff = new StringBuilder();
       sbuff.append("  ChunkedDataNode size=").append(size).append(" filterMask=").append(filterMask).append(" filePos=").append(filePos).append(" offsets= ");
-      for (long anOffset : offset) sbuff.append(anOffset).append(" ");
+      for (long anOffset : offsetLong) sbuff.append(anOffset).append(" ");
       return sbuff.toString();
     }
   }

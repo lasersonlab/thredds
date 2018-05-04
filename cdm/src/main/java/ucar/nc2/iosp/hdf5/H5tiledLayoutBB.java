@@ -196,6 +196,15 @@ class H5tiledLayoutBB implements LayoutBB {
       return offset;
     }
 
+    public long[] getOffsetLong() {
+      long[] offsetLong = delegate.offsetLong;
+      if (offsetLong.length > nChunkDims) { // may have to eliminate last offset
+        offsetLong = new long[nChunkDims];
+        System.arraycopy(delegate.offsetLong, 0, offsetLong, 0, nChunkDims);
+      }
+      return offsetLong;
+    }
+
     public ByteBuffer getByteBuffer() throws IOException {
       try {
         // read the data
