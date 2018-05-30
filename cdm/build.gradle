@@ -10,6 +10,7 @@ apply from: "$rootDir/gradle/any/archiving.gradle"
 apply from: "$rootDir/gradle/any/publishing.gradle"
 
 apply plugin: 'groovy'  // For Spock tests.
+apply plugin: 'maven-publish'
 
 dependencies {
     compile project(':udunits')
