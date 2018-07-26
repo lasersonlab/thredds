@@ -12,15 +12,27 @@ publishing {
         if (version.endsWith('SNAPSHOT')) {
             maven {
                 name = 'snapshots'
-                url = 'https://artifacts.unidata.ucar.edu/repository/unidata-snapshots/'
+                url = 'https://oss.sonatype.org/content/repositories/snapshots/'
                 // Set credentials in root/publishing.gradle.
+                credentials {
+                    username project.properties.snapshotRepoUser
+                    password project.properties.snapshotRepoPass
+                }
             }
         } else {
             maven {
                 name = 'releases'
-                url = 'https://artifacts.unidata.ucar.edu/repository/unidata-releases/'
+                url = 'https://oss.sonatype.org/service/local/staging/deploy/maven2/'
                 // Set credentials in root/publishing.gradle.
+                credentials {
+                    username project.properties.snapshotRepoUser
+                    password project.properties.snapshotRepoPass
+                }
             }
         }
     }
+}
+
+signing {
+    sign publishing.publications
 }

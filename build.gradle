@@ -32,6 +32,11 @@ buildscript {
     }
 }
 
+plugins {
+    id 'maven-publish'
+    id 'signing'
+}
+
 allprojects {
     // Matches Maven's "project.groupId". Used in MANIFEST.MF for "Implementation-Vendor-Id".
     group = "org.lasersonlab.thredds"

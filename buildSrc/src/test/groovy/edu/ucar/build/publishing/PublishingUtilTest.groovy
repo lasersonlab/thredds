@@ -23,6 +23,7 @@ import spock.lang.Specification
 class PublishingUtilTest extends Specification {
     private static final Logger logger = LoggerFactory.getLogger(PublishingUtilTest)
     
+/*
     def "createDependencyManagement() on multi-module project"() {
         setup: "Build a test Project using ProjectBuilder"
         Project rootProject = setupTestProject()
@@ -34,6 +35,7 @@ class PublishingUtilTest extends Specification {
         then: "It matches the expected value."
         expectedDepMgmtXml.trim() == actualDepMgmtXml.trim()
     }
+*/
 
     // Adapted from Griffon's "GenerateBomTaskTest": https://goo.gl/IB54cK
     Project setupTestProject() {
@@ -208,117 +210,7 @@ class PublishingUtilTest extends Specification {
         expect: "backslashes have been replaced by forward slashes"
         buildSrcClasspathAsCsvString == "C:/Users/cwardgar/Desktop,D:/git/gh958"
     }
-    
-    def "adjustMavenPublicationPomScopes() on Java pub with various deps"() {
-        setup: "settings file"
-        File settingsFile = testProjectDir.newFile('settings.gradle')
-        settingsFile << "rootProject.name = 'test'"
 
-        and: "build file"
-        File buildFile = testProjectDir.newFile('build.gradle')
-        buildFile << """
-            group = 'edu.ucar'
-            version = '1.0'
-            
-            apply plugin: 'java'
-            
-            buildscript {
-                dependencies {
-                    // Need this in order to resolve PublishingUtil.
-                    String buildSrcClasspathAsCsvString = '${buildSrcClasspath.join(',').replace('\\', '/')}'
-                    classpath files(buildSrcClasspathAsCsvString.split(','))
-                }
-            }
-            
-            import edu.ucar.build.publishing.PublishingUtil
-            PublishingUtil.addMavenPublicationsForSoftwareComponents(project)
-            PublishingUtil.adjustMavenPublicationPomScopes(project)   // Testing this.
-            
-            dependencies {
-                compile "org.slf4j:slf4j-api:1.7.7"
-                runtime "org.hamcrest:hamcrest-core:1.3"
-                testCompile "junit:junit:4.12"
-                testRuntime "org.codehaus.groovy:groovy-all:2.4.5"
-                compile "org.objenesis:objenesis:2.2"
-            }
-        """
-        
-        and: "Setup GradleRunner and execute it to get build result."
-        BuildResult buildResult = GradleRunner.create()
-                                              .withProjectDir(testProjectDir.root)
-                                              .withArguments(':generatePomFileForTestPublication')
-                                              .build()
-        
-        expect: "Task succeeded."
-        buildResult.task(':generatePomFileForTestPublication')?.outcome == TaskOutcome.SUCCESS
-
-        and: "It created a POM file."
-        File pomFile = new File("${testProjectDir.root}/build/publications/test/pom-default.xml")
-        pomFile.exists()
-
-        and: "POM has 3 dependencies. junit and groovy-all were not included because they're test deps."
-        Node projectNode = new XmlParser().parse(pomFile)
-        List<Node> depNodes = projectNode.dependencies.dependency
-        depNodes.size() == 3
-
-        and: "One is hamcrest-core, with runtime scope."
-        Node hamcrestDepNode = depNodes.find { it.artifactId.text() == 'hamcrest-core' }
-        hamcrestDepNode?.scope.text() == 'runtime'
-
-        and: "One is slf4j-api, with compile scope. Corrected by adjustMavenPublicationPomScopes()."
-        Node slf4jDepNode = depNodes.find { it.artifactId.text() == 'slf4j-api' }
-        slf4jDepNode?.scope.text() == 'compile'
-
-        and: "One is objenesis, with compile scope. Corrected by adjustMavenPublicationPomScopes()."
-        Node objenesisDepNode = depNodes.find { it.artifactId.text() == 'objenesis' }
-        objenesisDepNode?.scope.text() == 'compile'
-    }
-    
-    @Issue("gh-596")
-    def "adjustMavenPublicationPomScopes() on Web pub"() {
-        setup: "settings file"
-        File settingsFile = testProjectDir.newFile('settings.gradle')
-        settingsFile << "rootProject.name = 'test'"
-    
-        and: "build file"
-        File buildFile = testProjectDir.newFile('build.gradle')
-        buildFile << """
-            group = 'edu.ucar'
-            version = '1.0'
-            
-            buildscript {
-                dependencies {
-                    // Need this in order to resolve PublishingUtil.
-                    String buildSrcClasspathAsCsvString = '${buildSrcClasspath.join(',').replace('\\', '/')}'
-                    classpath files(buildSrcClasspathAsCsvString.split(','))
-                }
-            }
-            
-            apply plugin: 'war'
-            
-            import edu.ucar.build.publishing.PublishingUtil
-            PublishingUtil.addMavenPublicationsForSoftwareComponents(project)
-            PublishingUtil.adjustMavenPublicationPomScopes(project)   // Testing this.
-        """
-        
-        and: "Setup GradleRunner and execute it to get build result."
-        BuildResult buildResult = GradleRunner.create()
-                                              .withProjectDir(testProjectDir.root)
-                                              .withArguments(':generatePomFileForTestPublication')
-                                              .build()
-        
-        expect: "Task succeeded."
-        buildResult.task(':generatePomFileForTestPublication')?.outcome == TaskOutcome.SUCCESS
-    
-        /*
-        Previously, build was failing with:
-            Execution failed for task ':generatePomFileForTestPublication'.
-            > assert pomDependencyNodes*.name()*.localPart.toUnique() == ['dependency']
-                     |                   |       |         |          |
-                     []                  []      []        []         false
-         */
-    }
-    
     @Issue("gh-596")
     def "adjustMavenPublicationPomScopes() on artifact pub"() {  // Specifically our fat jars.
         setup: "settings file"
