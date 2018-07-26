@@ -34,7 +34,7 @@ buildscript {
 
 allprojects {
     // Matches Maven's "project.groupId". Used in MANIFEST.MF for "Implementation-Vendor-Id".
-    group = "edu.ucar"
+    group = "org.lasersonlab.thredds"
     // Matches Maven's "project.version". Used in MANIFEST.MF for "Implementation-Version".
     version = '5.0.0-SNAPSHOT'
     // Eventually, we'll stop appending "SNAPSHOT" to our versions and just use this.
