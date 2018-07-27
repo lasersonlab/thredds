@@ -116,9 +116,110 @@ abstract class PublishingUtil {
             // Adapted from code in the above-mentioned Gradle Forums thread but expanded for clarity.
             publishing {
                 publications.all { MavenPublication pub ->
+
+                    pub.pom {
+
+                        description = project.description
+                        name = project.name
+                        url = 'https://github.com/lasersonlab/thredds'
+
+                        scm {
+                            connection = 'scm:git:https://github.com/lasersonlab/thredds/'
+                            developerConnection = 'scm:git:git@github.com:lasersonlab/thredds.git'
+                            url = 'https://github.com/lasersonlab/thredds'
+                        }
+
+                        licenses {
+                            license {
+                                name = '(MIT-style) netCDF C library license'
+                                url = 'http://www.unidata.ucar.edu/software/netcdf/copyright.html'
+                            }
+                        }
+
+                        developers {
+                            developer {
+                                id = 'caron'
+                                name = 'John Caron'
+                                email = 'caron@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'chastang'
+                                name = 'Julien Chastang'
+                                email = 'chastang@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'edavis'
+                                name = 'Ethan Davis'
+                                email = 'edavis@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'dmh'
+                                name = 'Dennis Heimbigner'
+                                email = 'dmh@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'emmerson'
+                                name = 'Steve Emmerson'
+                                email = 'steve@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'oxelson'
+                                name = 'Jennifer Ganter Oxelson'
+                                email = 'oxelson@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'mhermida'
+                                name = 'Marcos Hermida'
+                                email = 'mhermida@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                            developer {
+                                id = 'russ'
+                                name = 'Russel Rew'
+                                email = 'russ@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['C Developer']
+                            }
+                            developer {
+                                id = 'yuanho'
+                                name = 'Ho Yuan'
+                                email = 'yuanho@unidata.ucar.edu'
+                                organization = 'UCAR/UNIDATA'
+                                organizationUrl = 'http://www.unidata.ucar.edu/'
+                                roles = ['Java Developer']
+                            }
+                        }
+                    }
+
                     pub.pom.withXml {
                         Node pomProjectNode = asNode()
                         assert pomProjectNode.name().localPart == 'project'
+
+//                        pomProjectNode
+//                                .appendNode('description', project.description)
+//                                .appendNode('name', project.name)
+//                                .appendNode('url', 'https://github.com/lasersonlab/thredds')
 
                         // The '*' is an alias for Node.breadthFirst(). See http://goo.gl/Bp8s0k
                         List<Node> pomDependencyNodes = pomProjectNode.dependencies.'*'

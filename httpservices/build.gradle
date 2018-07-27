@@ -1,3 +1,4 @@
+description = "Miscellaneous network utility classes"
 ext.title = "HttpClient Wrappers"
 
 apply from: "$rootDir/gradle/any/dependencies.gradle"
@@ -6,7 +7,6 @@ apply from: "$rootDir/gradle/any/testing.gradle"
 apply from: "$rootDir/gradle/any/coverage.gradle"
 apply from: "$rootDir/gradle/any/archiving.gradle"
 apply from: "$rootDir/gradle/any/publishing.gradle"
-apply from: "$rootDir/gradle/any/gretty.gradle"
 
 dependencies {
     compile libraries["jsr305"]
@@ -16,11 +16,4 @@ dependencies {
 
     compile libraries["slf4j-api"]
     testRuntime libraries["logback-classic"]
-}
-
-gretty {
-    // We're going to simply use dtswar as an endpoint for our HTTP tests.
-    overlayAndApplyConfigOf ':opendap:dtswar'
-    
-    integrationTestTask = 'test'
 }
